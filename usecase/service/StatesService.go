@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/safe_msvc_city/core"
 	"github.com/safe_msvc_city/insfratructure/entities"
+	"github.com/safe_msvc_city/insfratructure/helpers"
 	"github.com/safe_msvc_city/insfratructure/ui/global"
 	"github.com/safe_msvc_city/insfratructure/ui/uicore"
 	"github.com/safe_msvc_city/usecase/dto"
@@ -91,8 +92,8 @@ func (s *statesService) CreateState(c *fiber.Ctx) error {
 		})
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		utils.STATUS: fiber.StatusCreated,
-		utils.DATA:   result,
+		utils.STATUS:  fiber.StatusCreated,
+		utils.DATA:    result,
 		utils.MESSAGE: utils.CREATED,
 	})
 }
@@ -122,8 +123,8 @@ func (s *statesService) UpdateState(c *fiber.Ctx) error {
 		})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		utils.STATUS: fiber.StatusOK,
-		utils.DATA:   result,
+		utils.STATUS:  fiber.StatusOK,
+		utils.DATA:    result,
 		utils.MESSAGE: utils.UPDATED,
 	})
 }
@@ -144,9 +145,9 @@ func (s *statesService) DeleteState(c *fiber.Ctx) error {
 		})
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		utils.STATUS: fiber.StatusOK,
-		utils.DATA:   result,
-		utils.MESSAGE:utils.REMOVED,
+		utils.STATUS:  fiber.StatusOK,
+		utils.DATA:    result,
+		utils.MESSAGE: utils.REMOVED,
 	})
 }
 
@@ -159,6 +160,24 @@ func validateState(id uint, s *statesService, c *fiber.Ctx) (dto.StatesDTO, stri
 	var msg string = ""
 	stateDto := dto.StatesDTO{}
 	body := c.Body()
+	//dataMap := make(map[string]string)
+
+	// fields := []string{
+	// 	utils.NAME,
+	// 	utils.CITY_ID,
+	// 	utils.ACTIVE,
+	// 	utils.ZIP_CODE,
+	// }
+
+	// for _, field := range fields {
+	// 	value := c.FormValue(field)
+
+	// 	if value != "" {
+	// 		dataMap[field] = value
+	// 	} else {
+	// 		dataMap[field] = ""
+	// 	}
+	// }
 	var dataMap map[string]interface{}
 	errJson := json.Unmarshal([]byte(body), &dataMap)
 	if errJson != nil {
@@ -170,10 +189,10 @@ func validateState(id uint, s *statesService, c *fiber.Ctx) (dto.StatesDTO, stri
 		return dto.StatesDTO{}, msgValid
 	}
 
-	MapToStructStates(&stateDto, dataMap)
-	msgRequierd := validateRequired(stateDto)
-	if msgRequierd != "" {
-		return dto.StatesDTO{}, msgRequierd
+	helpers.MapToStructState(dataMap, &stateDto)
+	msg = validateRequired(stateDto)
+	if msg != "" {
+		return dto.StatesDTO{}, msg
 	}
 	existName, _ := s.states.GetStatesFindByName(id, stateDto.Name)
 	if existName {
@@ -182,36 +201,69 @@ func validateState(id uint, s *statesService, c *fiber.Ctx) (dto.StatesDTO, stri
 	return stateDto, msg
 }
 
-func MapToStructStates(stateDto *dto.StatesDTO, dataMap map[string]interface{}) {
-	state := dto.StatesDTO{
-		Name:   dataMap[utils.NAME].(string),
-		CityId: uint(dataMap[utils.CITY_ID].(float64)),
-		Active: dataMap[utils.ACTIVE].(bool),
-	}
-	*stateDto = state
+// func MapToStructStates(stateDto *dto.StatesDTO, dataMap map[string]string) {
+// 	cityId, _ := strconv.Atoi(dataMap[utils.CITY_ID])
+// 	isActive, _ := strconv.ParseBool(dataMap[utils.ACTIVE])
 
-}
-func validateField(value map[string]interface{}) string {
+// 	state := dto.StatesDTO{
+// 		Name:    dataMap[utils.NAME],
+// 		CityId:  uint(cityId),
+// 		ZipCode: dataMap[utils.ZIP_CODE],
+// 		Active:  isActive,
+// 	}
+// 	*stateDto = state
+// }
+
+func validateField(dataMap map[string]interface{}) string {
 	msg := ""
-	if value[utils.NAME] == nil {
+	// for field, value := range dataMap {
+	// 	switch field {
+	// 	case utils.NAME:
+	// 		if value == "" {
+	// 			msg = utils.NAME_FIELD_IS_REQUIRED
+	// 		}
+	// 	case utils.CITY_ID:
+	// 		cityId, err := strconv.Atoi(value)
+	// 		if err != nil || cityId == 0 {
+	// 			msg = utils.CITY_ID_FIELD_IS_REQUIRED
+	// 		}
+	// 	case utils.ACTIVE:
+	// 		isActive, err := strconv.ParseBool(value)
+	// 		if err != nil || !isActive && !(!isActive) {
+	// 			msg = utils.ACTIVE_FIELD_IS_REQUIRED
+	// 		}
+	// 	case utils.ZIP_CODE:
+	// 		if value == "" {
+	// 			msg = utils.ZIP_CODE_IS_FIELD_REQUIRED
+	// 		}
+	// 	}
+	// }
+	if dataMap[utils.NAME] == "" {
 		msg = utils.NAME_FIELD_IS_REQUIRED
 	}
-	if value[utils.ACTIVE] == nil {
+	if dataMap[utils.ACTIVE] == nil {
 		msg = utils.ACTIVE_FIELD_IS_REQUIRED
 	}
-	if value[utils.CITY_ID] == nil {
+	if dataMap[utils.CITY_ID] == nil {
 		msg = utils.CITY_ID_FIELD_IS_REQUIRED
+	}
+	if dataMap[utils.ZIP_CODE] == "" {
+		msg = utils.ZIP_CODE_IS_FIELD_REQUIRED
 	}
 
 	return msg
 }
-func validateRequired(value dto.StatesDTO) string {
-	msg := ""
-	if len(value.Name) == 0 || value.Name == "" {
+func validateRequired(stateDto dto.StatesDTO) string {
+
+	var msg string = utils.EMPTY
+	if stateDto.Name == utils.EMPTY {
 		msg = utils.NAME_IS_REQUIRED
 	}
-	if value.CityId == 0 {
+	if stateDto.CityId == 0 {
 		msg = utils.CITY_ID_IS_REQUIRED
+	}
+	if stateDto.ZipCode == utils.EMPTY {
+		msg = utils.ZIP_CODE_IS_REQUIRED
 	}
 	return msg
 }
