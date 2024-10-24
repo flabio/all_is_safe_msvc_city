@@ -9,5 +9,5 @@ func main() {
 	app := fiber.New()
 	routers.NewCityRouter(app)
 	routers.NewStatesRouter(app)
-	app.Listen(":3004")
+	app.Listen(":3014")
 }
