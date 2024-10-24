@@ -14,7 +14,7 @@ import (
 func DatabaseConnection() *gorm.DB {
 	errEnv := godotenv.Load()
 	if errEnv != nil {
-		panic(errEnv.Error())
+		log.Println(errEnv.Error())
 	}
 	strConnection := CreateDatabase()
 	dsn := fmt.Sprintf(strConnection+" dbname=%s", os.Getenv("DB_NAME"))
@@ -55,7 +55,7 @@ func CloseConnection() {
 	var db *gorm.DB = DatabaseConnection()
 	dbSQL, err := db.DB()
 	if err != nil {
-		panic(err.Error())
+		log.Println(err.Error())
 	}
 	dbSQL.Close()
 }
