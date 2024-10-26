@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/flabio/safe_constants v0.0.0-20240822230913-89604af68e4e // indirect
+	github.com/flabio/safe_constants v1.1.0 // indirect
 	github.com/flabio/safe_var_db v0.0.0-20240823121717-920baf4684b5 // indirect
 	github.com/gofiber/fiber/v2 v2.52.5 // indirect
 	github.com/google/uuid v1.5.0 // indirect
