@@ -7,7 +7,13 @@ import (
 	"github.com/safe_msvc_city/insfratructure/database"
 	"github.com/safe_msvc_city/insfratructure/entities"
 	"github.com/safe_msvc_city/insfratructure/ui/uicore"
+	"gorm.io/gorm"
 )
+
+type OpenConnection struct {
+	connection *gorm.DB
+	mux        sync.Mutex
+}
 
 func GetCityInstance() uicore.UICityCore {
 	var (
@@ -16,7 +22,7 @@ func GetCityInstance() uicore.UICityCore {
 	)
 	_ONCE.Do(func() {
 		_OPEN = &OpenConnection{
-			connection: database.DatabaseConnection(),
+			connection: database.GetDatabaseInstance(),
 		}
 	})
 	return _OPEN
@@ -25,57 +31,64 @@ func GetCityInstance() uicore.UICityCore {
 func (db *OpenConnection) GetCityFindAll() ([]entities.City, error) {
 	var cities []entities.City
 	db.mux.Lock()
-	result := db.connection.Order(constants.DB_ORDER_DESC).Find(&cities)
 	defer db.mux.Unlock()
-	defer database.CloseConnection()
+
+	result := db.connection.Order(constants.DB_ORDER_DESC).Find(&cities)
+	//defer database.CloseConnection()
 	return cities, result.Error
 }
 func (db *OpenConnection) GetCityFindById(id uint) (entities.City, error) {
 	var city entities.City
 	db.mux.Lock()
-	result := db.connection.Where(constants.DB_EQUAL_ID, id).Find(&city)
 	defer db.mux.Unlock()
-	defer database.CloseConnection()
+
+	result := db.connection.Where(constants.DB_EQUAL_ID, id).Find(&city)
+	//defer database.CloseConnection()
 	return city, result.Error
 }
 func (db *OpenConnection) CreateCity(city entities.City) (entities.City, error) {
 	db.mux.Lock()
-	err := db.connection.Create(&city).Error
 	defer db.mux.Unlock()
-	defer database.CloseConnection()
+	err := db.connection.Create(&city).Error
+
+	//defer database.CloseConnection()
 	return city, err
 }
 func (db *OpenConnection) UpdateCity(id uint, city entities.City) (entities.City, error) {
 	db.mux.Lock()
-	err := db.connection.Where(constants.DB_EQUAL_ID, id).Updates(&city).Error
 	defer db.mux.Unlock()
-	defer database.CloseConnection()
+	err := db.connection.Where(constants.DB_EQUAL_ID, id).Updates(&city).Error
+
+	//defer database.CloseConnection()
 	return city, err
 }
 func (db *OpenConnection) DeleteCity(id uint) (bool, error) {
 	db.mux.Lock()
+	defer db.mux.Unlock()
 	var city entities.City
 	err := db.connection.Where(constants.DB_EQUAL_ID, id).Delete(&city).Error
-	defer db.mux.Unlock()
-	defer database.CloseConnection()
+
+	//defer database.CloseConnection()
 	return err == nil, err
 
 }
 func (db *OpenConnection) GetCityFindByName(id uint, name string) (bool, error) {
 	db.mux.Lock()
+	defer db.mux.Unlock()
 	var city entities.City
 	query := db.connection.Where(constants.DB_EQUAL_NAME, name)
 	if id > 0 {
 		query = query.Where(constants.DB_DIFF_ID, id)
 	}
 	query = query.Find(&city)
-	defer db.mux.Unlock()
-	defer database.CloseConnection()
+
+	//defer database.CloseConnection()
 	return query.RowsAffected > 0, query.Error
 
 }
 func (db *OpenConnection) GetCityFindByCode(id uint, name string) (bool, error) {
 	db.mux.Lock()
+	defer db.mux.Unlock()
 	var city entities.City
 	query := db.connection.Where(constants.DB_EQUAL_NAME, name)
 	if id > 0 {
@@ -83,7 +96,6 @@ func (db *OpenConnection) GetCityFindByCode(id uint, name string) (bool, error) 
 	}
 	query = query.Find(&city)
 
-	defer db.mux.Unlock()
-	defer database.CloseConnection()
+	//defer database.CloseConnection()
 	return city.Id > 0, query.Error
 }

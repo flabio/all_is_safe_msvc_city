@@ -4,58 +4,79 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/joho/godotenv"
 	"github.com/safe_msvc_city/insfratructure/entities"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func DatabaseConnection() *gorm.DB {
-	errEnv := godotenv.Load()
-	if errEnv != nil {
-		log.Println(errEnv.Error())
-	}
-	strConnection := CreateDatabase()
-	dsn := fmt.Sprintf(strConnection+" dbname=%s", os.Getenv("DB_NAME"))
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+var dbInstance *gorm.DB
+var dbOnce sync.Once
+
+// LoadEnv carga las variables de entorno desde el archivo .env
+func LoadEnv() {
+	err := godotenv.Load()
 	if err != nil {
-		log.Println(err.Error())
+		log.Println("Error cargando el archivo .env:", err)
 	}
-	db.AutoMigrate(&entities.City{}, &entities.States{})
-	return db
 }
-func CreateDatabase() string {
+
+// GetDatabaseInstance devuelve una instancia única de la conexión a la base de datos
+func GetDatabaseInstance() *gorm.DB {
+	dbOnce.Do(func() {
+		var err error
+		dbInstance, err = DatabaseConnection()
+		if err != nil {
+			log.Fatalf("Error al inicializar la base de datos: %v", err)
+		}
+	})
+	return dbInstance
+}
+
+// DatabaseConnection establece la conexión a la base de datos y realiza migraciones
+func DatabaseConnection() (*gorm.DB, error) {
+	LoadEnv()
+
 	DB_USER := os.Getenv("DB_USER")
 	DB_PASSWORD := os.Getenv("DB_PASSWORD")
 	DB_HOST := os.Getenv("DB_HOST")
+	DB_NAME := os.Getenv("DB_NAME")
 	DB_PORT := os.Getenv("DB_PORT")
 	DB_SSLMODE := os.Getenv("DB_SSLMODE")
 
-	strConnection := fmt.Sprintf("host=%s user=%s password=%s port=%s sslmode=%s", DB_HOST, DB_USER, DB_PASSWORD, DB_PORT, DB_SSLMODE)
-	_, err := gorm.Open(postgres.Open(strConnection), &gorm.Config{})
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		DB_HOST,
+		DB_USER,
+		DB_PASSWORD,
+		DB_NAME,
+		DB_PORT,
+		DB_SSLMODE,
+	)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Println(err.Error())
+		return nil, fmt.Errorf("no se pudo conectar a la base de datos: %w", err)
 	}
-	// query := fmt.Sprintf("SELECT 1 FROM  pg_database WHERE datname ='%s'", os.Getenv("DB_NAME"))
 
-	// errd := db.Exec(query)
-	// if errd.RowsAffected == 0 {
-	// 	// Crear la base de datos usando una consulta SQL cruda
-	// 	createDBSQL := fmt.Sprintf("CREATE DATABASE %s", os.Getenv("DB_NAME"))
-	// 	err = db.Exec(createDBSQL).Error
-	// 	if err != nil {
-	// 		log.Println(err.Error())
-	// 	}
-	// 	fmt.Printf("Base de datos '%s' creada exitosamente.\n", os.Getenv("DB_NAME"))
-	// }
-	return strConnection
+	err = db.AutoMigrate(&entities.City{}, &entities.States{})
+	if err != nil {
+		return nil, fmt.Errorf("no se pudo migrar la base de datos: %w", err)
+	}
+	return db, nil
 }
+
+// CloseConnection cierra la conexión a la base de datos
 func CloseConnection() {
-	var db *gorm.DB = DatabaseConnection()
+	db := GetDatabaseInstance()
 	dbSQL, err := db.DB()
 	if err != nil {
-		log.Println(err.Error())
+		log.Println("Error al obtener la instancia de *sql.DB:", err)
+		return
 	}
-	dbSQL.Close()
+	err = dbSQL.Close()
+	if err != nil {
+		log.Println("Error al cerrar la conexión a la base de datos:", err)
+	}
 }
